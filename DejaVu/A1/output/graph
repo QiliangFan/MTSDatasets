@@ -1,0 +1,37 @@
+digraph "graph" {
+	docker_001
+	docker_002
+	docker_003
+	docker_004
+	docker_005
+	docker_006
+	docker_007
+	docker_008
+	db_003
+	db_007
+	db_009
+	os_022 -> os_018
+	os_022 -> os_017
+	os_021 -> os_019
+	os_021 -> os_020
+	docker_002 -> docker_007
+	docker_002 -> docker_008
+	docker_002 -> db_007
+	docker_002 -> db_009
+	docker_001 -> docker_007
+	docker_001 -> docker_008
+	docker_001 -> db_007
+	docker_001 -> db_009
+	docker_003 -> docker_005
+	docker_003 -> docker_006
+	docker_003 -> db_007
+	docker_003 -> db_009
+	docker_004 -> docker_005
+	docker_004 -> docker_006
+	docker_004 -> db_007
+	docker_004 -> db_009
+	docker_007 -> db_003
+	docker_008 -> db_003
+	docker_006 -> db_003
+	docker_005 -> db_003
+}
