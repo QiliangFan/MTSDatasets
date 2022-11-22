@@ -3,10 +3,31 @@ import os
 from glob import glob
 import pandas as pd
 import pretty_errors
+from typing import OrderedDict
 from multiprocessing import Pool
 import gc
 import numpy as np
 from itertools import product
+
+def process_service_metric(date: str):
+    metric_root = os.path.join(data_root, date, "metric")
+    out_root = os.path.join("output", date)
+    
+    service_data_root = os.path.join(metric_root, "service")
+    service_metric_files = glob(os.path.join(service_data_root, "*.csv"))
+    service_out_root = os.path.join(out_root, "service")
+    if not os.path.exists(service_out_root):
+        os.makedirs(service_out_root, exist_ok=True)
+    for service_metric in service_metric_files:
+        dt = pd.read_csv(service_metric)
+        for group_name, group_dt in dt.groupby(by="service"):
+            group_dt = group_dt[["timestamp", "rr", "sr", "mrt"]]
+            group_dt = group_dt.sort_values(by="timestamp", ignore_index=True)
+            group_name = str(group_name)
+            out_file = os.path.join(service_out_root, f"{group_name}.csv")
+            group_dt.to_csv(out_file, index=False)
+    print(f"{date}: service")
+
 
 # 数据缺失太多的pod，
 not_used = ["paymentservice-2", "adservice2-0", "adservice-0"]
@@ -61,30 +82,15 @@ def process_pod_metric(date: str, pod_name_with_prefix: str):
 
 def main():
     dates = ["2022-03-29-cloudbed1", "2022-03-30-cloudbed1", "2022-04-01-cloudbed1"]
-    # for date in dates:
-    #     metric_root = os.path.join(data_root, date, "metric")
-    #     out_root = os.path.join("output", date)
-        
-    #     #####################################
-    #     # service metric
-    #     # sr: Sender Report
-    #     # rr: Receiver Report
-    #     # mrt: Mean Response Time
-    #     #####################################
-    #     service_data_root = os.path.join(metric_root, "service")
-    #     service_metric_files = glob(os.path.join(service_data_root, "*.csv"))
-    #     service_out_root = os.path.join(out_root, "service")
-    #     if not os.path.exists(service_out_root):
-    #         os.makedirs(service_out_root, exist_ok=True)
-    #     for service_metric in service_metric_files:
-    #         dt = pd.read_csv(service_metric)
-    #         for group_name, group_dt in dt.groupby(by="service"):
-    #             group_dt = group_dt[["timestamp", "rr", "sr", "mrt"]]
-    #             group_dt = group_dt.sort_values(by="timestamp", ignore_index=True)
-    #             group_name = str(group_name)
-    #             out_file = os.path.join(service_out_root, f"{group_name}.csv")
-    #             group_dt.to_csv(out_file, index=False)
-    #     print(f"{date}: service")
+    #####################################
+    # service metric
+    # sr: Sender Report
+    # rr: Receiver Report
+    # mrt: Mean Response Time
+    #####################################
+    params = [(date,) for date in dates]
+    with Pool(len(dates)) as pool:
+        pool.starmap(process_service_metric, params)
 
 
     # #####################################
@@ -95,63 +101,63 @@ def main():
     # # 注意由于存在missing data，处理方式就不能很简单了
     # # node之间公共的指标也不同，因此选最大公共子集
     # #####################################
-    # # 只有node-5和node-6有服务部署
-    # valid_nodes = ["node-5", "node-6"]
-    # valid_metric_sets = set()
+    # 只有node-5和node-6有服务部署
+    valid_nodes = ["node-5", "node-6"]
+    valid_metric_sets = set()
 
-    # # 获取指标的最大公共子集
-    # for date in dates:
-    #     metric_root = os.path.join(data_root, date, "metric")
-    #     node_data_root = os.path.join(metric_root, "node")
-    #     node_metric_files = glob(os.path.join(node_data_root, "*.csv"))
-    #     out_root = os.path.join("output", date)
+    # 获取指标的最大公共子集
+    for date in dates:
+        metric_root = os.path.join(data_root, date, "metric")
+        node_data_root = os.path.join(metric_root, "node")
+        node_metric_files = glob(os.path.join(node_data_root, "*.csv"))
+        out_root = os.path.join("output", date)
 
-    #     for node_metric in node_metric_files:
-    #         node_dt = pd.read_csv(node_metric)
-    #         for node_name, group_dt in node_dt.groupby(by="cmdb_id"):
-    #             if node_name not in valid_nodes:
-    #                 continue
-    #             metrics = set(group_dt["kpi_name"].to_list())
-    #             if len(valid_metric_sets) == 0:
-    #                 valid_metric_sets |= metrics
-    #             else:
-    #                 valid_metric_sets &= metrics
+        for node_metric in node_metric_files:
+            node_dt = pd.read_csv(node_metric)
+            for node_name, group_dt in node_dt.groupby(by="cmdb_id"):
+                if node_name not in valid_nodes:
+                    continue
+                metrics = set(group_dt["kpi_name"].to_list())
+                if len(valid_metric_sets) == 0:
+                    valid_metric_sets |= metrics
+                else:
+                    valid_metric_sets &= metrics
 
-    # for date in dates:
-    #     metric_root = os.path.join(data_root, date, "metric")
-    #     node_data_root = os.path.join(metric_root, "node")
-    #     node_metric_files = glob(os.path.join(node_data_root, "*.csv"))
-    #     out_root = os.path.join("output", date)
-    #     node_output_root = os.path.join(out_root, "node")
-    #     if not os.path.exists(node_output_root):
-    #         os.makedirs(node_output_root)
+    for date in dates:
+        metric_root = os.path.join(data_root, date, "metric")
+        node_data_root = os.path.join(metric_root, "node")
+        node_metric_files = glob(os.path.join(node_data_root, "*.csv"))
+        out_root = os.path.join("output", date)
+        node_output_root = os.path.join(out_root, "node")
+        if not os.path.exists(node_output_root):
+            os.makedirs(node_output_root)
         
-    #     for node_metric in node_metric_files:
-    #         node_dt = pd.read_csv(node_metric)
-    #         for node_name, group_dt in node_dt.groupby(by="cmdb_id"):
-    #             if node_name not in valid_nodes:
-    #                 continue
-    #             metrics = OrderedDict()
-    #             ts_list = set(sorted(group_dt["timestamp"].tolist()))
-    #             metric_names = set(group_dt["kpi_name"].tolist()) & valid_metric_sets
+        for node_metric in node_metric_files:
+            node_dt = pd.read_csv(node_metric)
+            for node_name, group_dt in node_dt.groupby(by="cmdb_id"):
+                if node_name not in valid_nodes:
+                    continue
+                metrics = OrderedDict()
+                ts_list = set(sorted(group_dt["timestamp"].tolist()))
+                metric_names = set(group_dt["kpi_name"].tolist()) & valid_metric_sets
 
-    #             metrics["timestamp"] = []
-    #             for metric_name in metric_names:
-    #                 metrics[metric_name] = []
+                metrics["timestamp"] = []
+                for metric_name in metric_names:
+                    metrics[metric_name] = []
                 
-    #             for ts in ts_list:
-    #                 metrics["timestamp"].append(ts)
-    #                 seg = group_dt[group_dt["timestamp"] == ts]
-    #                 for metric_name in metric_names:
-    #                     if metric_name in seg["kpi_name"].tolist():
-    #                         metrics[metric_name].append(seg[seg["kpi_name"] == metric_name]["value"].item())
-    #                     else:
-    #                         metrics[metric_name].append(-1)
-    #             dt = pd.DataFrame(metrics)
-    #             out_file = os.path.join(node_output_root, f"{node_name}.csv")
-    #             dt.to_csv(out_file, index=False)
-    #             print(f"metric num: {len(metrics.keys())-1}")
-    #     print(f"{date}: node")
+                for ts in ts_list:
+                    metrics["timestamp"].append(ts)
+                    seg = group_dt[group_dt["timestamp"] == ts]
+                    for metric_name in metric_names:
+                        if metric_name in seg["kpi_name"].tolist():
+                            metrics[metric_name].append(seg[seg["kpi_name"] == metric_name]["value"].item())
+                        else:
+                            metrics[metric_name].append(-1)
+                dt = pd.DataFrame(metrics)
+                out_file = os.path.join(node_output_root, f"{node_name}.csv")
+                dt.to_csv(out_file, index=False)
+                print(f"metric num: {len(metrics.keys())-1}")
+        print(f"{date}: node")
 
     #####################################
     # pods' metrics
