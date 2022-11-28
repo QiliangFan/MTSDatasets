@@ -29,8 +29,8 @@ def process_service_metric(date: str):
     print(f"{date}: service")
 
 
-# 数据缺失太多的pod，
-not_used = ["paymentservice-2", "adservice2-0", "adservice-0"]
+# 数据缺失太多的pod 以及 指标较少的pod
+not_used = ["paymentservice-2", "adservice2-0", "adservice-0", "redis-cart-0", "redis-cart2-0"]
 
 def process_pod_metric(date: str, pod_name_with_prefix: str):
     metric_root = os.path.join(data_root, date, "metric")
